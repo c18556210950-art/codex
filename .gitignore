@@ -1,0 +1,32 @@
+# Default deny: historical work, private settings and outputs stay local.
+/*
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/package.json
+!/package-lock.json
+!/requirements.txt
+!/config.example.json
+!/src/
+!/docs/
+!/tests/
+!/ios/
+
+# Credentials and machine-specific files are excluded within allowed folders too.
+**/*.private.*
+**/.env
+**/.env.*
+**/config.json
+**/cloud.json
+**/wifi.json
+**/*.pem
+**/*.key
+**/*.p12
+**/*.mobileprovision
+**/xcuserdata/
+**/node_modules/
+**/__pycache__/
+**/*.pyc
+**/.DS_Store
+**/DerivedData/
+**/build/

@@ -1,0 +1,6 @@
+numpy>=1.24,<3
+Pillow>=10
+opencv-python>=4.8
+websocket-client>=1.7
+torch>=2.6
+transformers>=4.50,<6
