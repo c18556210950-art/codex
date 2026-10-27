@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>公网驾驶与行车直播</title>
+<style>
+*{box-sizing:border-box}body{font:16px/1.5 system-ui,sans-serif;background:#f2f5fa;color:#182940;margin:0;padding:22px;max-width:740px;margin-inline:auto}h1{font-size:27px;margin:8px 0}p{margin:8px 0}.sub{color:#54657d;font-size:14px}.panel{background:white;border-radius:18px;padding:20px;margin:18px 0}.top{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}#phase{font-size:21px;font-weight:700}#connection{font-size:13px;color:#54657d}button{font:inherit;border:0;border-radius:12px;min-height:52px;padding:10px 15px;background:#e8eef7;color:#173b6b;font-weight:650;cursor:pointer}button:disabled{opacity:.4;cursor:default}button:focus-visible{outline:3px solid #ffb52d;outline-offset:2px}.pad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:390px;margin:18px auto;touch-action:none;user-select:none;-webkit-user-select:none}.direction{min-height:78px;touch-action:none;-webkit-touch-callout:none}.direction span{display:block;font-size:25px;line-height:1.1}.direction small{font-size:12px}.direction.active{background:#1763ce;color:white}.stop{background:#b91c1c;color:white}#emergency{width:100%;min-height:58px;font-size:20px}.speed{display:flex;gap:14px;align-items:center;flex-wrap:wrap}.speed input{flex:1;min-width:150px;accent-color:#1763ce;height:32px}.speed output{font-weight:700;min-width:44px}.settings{display:flex;gap:22px;flex-wrap:wrap;margin:16px 0 0}.settings label{display:flex;align-items:center;gap:7px;min-height:34px}.settings input{width:19px;height:19px}.tests{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.message{min-height:26px;font-size:14px;overflow-wrap:anywhere}summary{cursor:pointer;font-weight:650}kbd{font:13px system-ui;background:#e8eef7;padding:2px 6px;border-radius:4px}@media(max-width:380px){body{padding:12px}.panel{padding:14px}.direction{min-height:68px}.pad{gap:7px}}
+.live-panel{position:sticky;top:4px;z-index:5;padding:12px 16px;margin:12px 0}.live-frame{position:relative;height:min(28vh,280px);min-height:120px;background:#101820;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;margin:9px 0}.live-frame img,.live-frame video{width:100%;height:100%;object-fit:contain}.live-frame [hidden]{display:none}.live-frame span{color:#c7d4df;padding:18px;font-size:14px;text-align:center}.camera-buttons{display:flex;gap:8px;flex-wrap:wrap}.camera-buttons button{font-size:14px;min-height:40px;padding:8px 12px}.live-panel p{font-size:12px;margin-bottom:0}
+
+.drive-workspace,.drive-column,.navigation-column{min-width:0}
+.wide-emergency{display:none}
+button,input,select{max-width:100%}
+.panel{overflow-wrap:anywhere}
+.live-frame .video-exit{position:absolute;right:max(16px,env(safe-area-inset-right));top:max(16px,env(safe-area-inset-top));z-index:2;min-height:44px;background:#172b43e6;color:white;border:1px solid #ffffff55}
+.live-frame:fullscreen{width:100vw!important;height:100vh!important;height:100dvh!important;max-height:none!important;border-radius:0;margin:0;background:#080d14}
+.live-frame:-webkit-full-screen{width:100vw!important;height:100vh!important;max-height:none!important;border-radius:0;margin:0;background:#080d14}
+.live-frame.video-fallback-fullscreen{position:fixed!important;inset:0!important;z-index:10000!important;width:100vw!important;height:100vh!important;height:100dvh!important;border-radius:0;margin:0}
+body.video-expanded{overflow:hidden}
+@media(min-width:960px){
+ body{max-width:1760px;padding:14px 24px 18px;padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}
+ .app-header{position:relative;gap:16px;min-height:52px;flex-wrap:nowrap}
+ .app-header h1{font-size:25px;margin:0;white-space:nowrap}
+ .wide-emergency{display:block;margin-left:auto;min-width:180px;min-height:48px;padding:10px 22px;background:#b91c1c;color:white}
+ body>p.sub{margin:3px 0 14px}
+ .drive-workspace{display:grid;grid-template-columns:minmax(340px,.92fr) minmax(440px,1.08fr);gap:20px;align-items:start}
+ .drive-column,.navigation-column{max-height:calc(100vh - 112px);max-height:calc(100dvh - 112px);overflow:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;padding-right:3px;padding-bottom:12px}
+ .drive-workspace .panel{margin:0 0 16px;padding:16px;border:1px solid #e3e9f1;border-radius:16px}
+ .drive-workspace .panel:last-child{margin-bottom:0}
+ .live-panel{position:relative;top:auto;z-index:auto}
+ .live-frame{height:clamp(180px,26vh,350px);height:clamp(180px,26dvh,350px);min-height:0;margin:10px 0}
+ .live-frame img,.live-frame video{object-fit:contain}
+ .manual-panel .pad{max-width:390px;gap:8px;margin:10px auto}
+ .manual-panel .pad button{min-height:54px;padding:6px}
+ .manual-panel .direction span{font-size:22px}
+ .manual-panel .direction small{font-size:12px}
+ .manual-panel>p.sub{display:none}
+ .manual-panel #emergency{min-height:48px;font-size:18px;margin-top:10px}
+ .manual-panel #message:empty{min-height:0;margin:0}
+ .manual-panel .speed{gap:10px}
+ .camera-buttons button{min-height:46px;flex:1 1 150px;font-size:14px}
+ #navigationPanel .camera-buttons button{flex-basis:42%}
+ #navigationPanel #navMap{height:clamp(300px,42vh,520px)!important;height:clamp(300px,42dvh,520px)!important;scroll-margin-top:12px!important}
+ #navigationPanel #navLiveCommand{background:#edf3fc;padding:12px;border-radius:10px}
+ #navigationPanel input[type=search]{min-width:160px!important}
+ #visionPanel #visionImage{max-height:280px!important}
+ .speed input{min-width:100px}
+ input[type=checkbox]{flex-shrink:0}
+ .drive-column:focus-visible,.navigation-column:focus-visible{outline:3px solid #1763ce;outline-offset:3px}
+}
+@media(min-width:1400px){
+ .drive-workspace{gap:24px;grid-template-columns:minmax(480px,.95fr) minmax(560px,1.05fr)}
+ .drive-workspace .panel{padding:20px}
+ .camera-buttons button{font-size:15px}
+ .manual-panel .pad{max-width:430px}
+ .manual-panel .pad button{min-height:62px}
+}
+
+</style>
+<div class="top app-header"><h1>双电机遥控手柄</h1><span id="connection">正在连接</span><button id="wideEmergency" class="wide-emergency" type="button">急停 / 停止电机</button></div>
+<p class="sub">按住行驶，松手停止。首次使用请将轮子或转轴悬空。</p>
+<div class="drive-workspace"><main class="drive-column" tabindex="0" aria-label="行车视频与驾驶控制"><section class="panel gamepad-panel">
+<div class="top"><strong>实体手柄 · 主驾驶入口</strong><span class="sub">连接后自动启用</span></div>
+<p id="controllerState" class="sub" role="status">正在检测手柄…</p>
+<select id="controllerSelect" aria-label="选择实体手柄" style="max-width:100%;width:100%;padding:9px;font:inherit;border:1px solid #ccd5e3;border-radius:8px"></select>
+<p id="controllerLive" class="sub"></p>
+<div class="camera-buttons"><button id="padLearn" type="button">修正 LT / RT 映射</button><button id="padMapReset" type="button">恢复标准映射</button></div>
+<p id="padMapState" class="sub" role="status">使用标准手柄映射；iPad 扳机识别为上下时，点击“修正 LT / RT 映射”。</p>
+<details><summary>手柄原始输入</summary><p id="padRawInput" class="sub"></p></details>
+<p id="hapticState" class="sub" role="status">视频颠簸反馈：等待画面和手柄</p>
+<p id="hapticCapability" class="sub">震动接口：等待检测</p>
+<p id="hapticCommandState" class="sub">震动指令：尚未发送；接口成功也不代表已验证实物震动</p>
+<div class="speed"><label for="hapticGain">震动强度</label><input id="hapticGain" type="range" min="0" max="100" step="5" value="65"><output id="hapticGainValue">65%</output><button id="hapticTest" type="button">试一下震动</button></div>
+<p id="controllerHint" class="sub">默认启用：<strong>RT 前进加速，LT 后退，左摇杆左右转向</strong>。松开油门停止，B 键急停；RT、LT 同时按下时停止。</p>
+<p id="localController" class="sub">电脑手柄读取受限时，打开 <a href="http://127.0.0.1:8765/">本机实体手柄控制页</a>（在连接手柄的电脑上使用）。</p>
+</section><section class="panel live-panel">
+<div class="top"><strong>行车直播</strong><span id="liveState" class="sub">正在连接直播</span></div>
+<div class="live-frame" id="liveFrame"><img id="liveImage" alt="车辆实时画面" hidden><video id="cameraPreview" muted playsinline autoplay hidden></video><span id="liveEmpty">车上的手机打开此页，点击“开启本机后置摄像头”</span><button id="videoExitFullscreen" class="video-exit" hidden>退出全屏</button></div>
+<div class="camera-buttons"><button id="startCamera">开启本机后置摄像头</button><button id="stopCamera">停止本机摄像头</button><button id="videoFullscreen">视频全屏</button></div>
+<p id="cameraMessage" class="sub">观看端无需开启摄像头。首次推流需要允许相机权限，并保持页面在前台。</p>
+</section><section class="panel manual-panel">
+<div class="top"><div id="phase" role="status" aria-live="polite">正在读取状态…</div><div id="power" class="sub">A 0% · B 0%</div></div>
+<div class="pad" aria-label="方向手柄">
+<button class="direction" data-x="-1" data-y="1" aria-label="向左前方行驶"><span>↖</span><small>左前</small></button>
+<button class="direction" data-x="0" data-y="1" aria-label="前进"><span>↑</span><small>前进</small></button>
+<button class="direction" data-x="1" data-y="1" aria-label="向右前方行驶"><span>↗</span><small>右前</small></button>
+<button class="direction" data-x="-1" data-y="0" aria-label="原地左转"><span>↶</span><small>左转</small></button>
+<button class="stop" id="centerStop" aria-label="停止">停止</button>
+<button class="direction" data-x="1" data-y="0" aria-label="原地右转"><span>↷</span><small>右转</small></button>
+<button class="direction" data-x="-1" data-y="-1" aria-label="向左后方行驶"><span>↙</span><small>左后</small></button>
+<button class="direction" data-x="0" data-y="-1" aria-label="后退"><span>↓</span><small>后退</small></button>
+<button class="direction" data-x="1" data-y="-1" aria-label="向右后方行驶"><span>↘</span><small>右后</small></button>
+</div>
+<div class="speed"><label for="speed">最高速度</label><input id="speed" type="range" min="50" max="100" step="5" value="80"><output id="speedValue" for="speed">80%</output></div>
+<p class="sub">键盘：<kbd>W A S D</kbd> 或方向键；<kbd>空格</kbd> 急停。低速无法起转时，可适当提高速度。</p>
+<button id="emergency" class="stop">急停 / 停止电机</button>
+<p id="message" class="message" role="status" aria-live="polite"></p>
+</section><details class="panel"><summary>电机方向设置</summary>
+<div class="settings"><label><input id="invertA" type="checkbox">A 电机反向</label><label><input id="invertB" type="checkbox">B 电机反向</label></div>
+<p class="sub">前进时两侧方向不对，可调整对应电机反向；左右转向相反时检查 A、B 对应的左右轮。设置仅影响手柄。</p>
+</details></main><aside class="navigation-column" tabindex="0" aria-label="地图导航与自动驾驶"><section class="panel" id="navigationPanel">
+<div class="top"><strong>高德路线驾驶与手持测试</strong><span id="navProgress" class="sub">尚未设置路线</span></div>
+<p class="sub">选择目的地 → 规划路线 → 开始。规划后自动载入路线，并提取“前进几米、向左/右转”指令；手机绝对朝向自动对齐，无需对准参考点校准。车辆执行仍检查定位、朝向和可走通路。</p>
+<p id="navGpsStats" class="sub">定位诊断：尚未收到手机数据</p>
+<label>导航定位要求 <select id="navGpsMode" style="padding:8px;max-width:100%"><option value="test" selected>测试模式：忽略GPS与朝向精度限制</option><option value="strict">严格模式：检查GPS与朝向精度</option></select></label>
+<p id="navHeadingStats" class="sub" role="status">手机朝向精度：等待数据</p>
+<p class="sub">当前默认测试模式：GPS误差值只提示，不单独触发停车；定位有效窗口30秒，超过30秒未更新、异常跳变或明显偏离路线仍停车。测试模式不提供精确路线保证，终点按连续3次新定位落入到达半径判断。</p>
+<p id="navLiveCommand" style="font-size:20px;font-weight:700">导航指令：等待路线</p>
+<div class="camera-buttons"><button id="navHandStart" disabled>手持手机测试（不驱动电机）</button><button id="navStart" style="background:#176b3a;color:white">开启小车导航自动驾驶</button><button id="navStop" class="stop">停止小车导航</button><button id="navHandStop">结束手持测试</button></div>
+<p id="navCarState" role="status" class="sub">规划路线后，点击绿色按钮即可启动小车导航。</p>
+<p id="navHandState" class="sub">手持模式无需摄像头或车辆在线。授权定位与朝向后，握持手机让镜头朝行进方向，按提示步行；测试期间所有电机驾驶入口会锁定。</p>
+<details><summary>提取的路线操控指令</summary><ol id="navCommands" class="sub"></ol></details>
+<form id="placeSearchForm" style="margin:12px 0">
+<label for="placeKeyword">搜索目的地</label>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0"><input id="placeKeyword" type="search" maxlength="80" placeholder="输入学校、公园、小区或商店名称" style="flex:1;min-width:160px;padding:12px;border:1px solid #ccd5e3;border-radius:10px;font:inherit"><button id="placeSearch" type="submit">搜索地名</button></div>
+<label for="placeCity" class="sub">城市（可选）</label> <input id="placeCity" type="text" maxlength="40" placeholder="留空优先小车所在城市" style="max-width:100%;padding:9px;border:1px solid #ccd5e3;border-radius:8px;font:inherit">
+</form>
+<p id="placeState" role="status" class="sub">搜索后选择一个地点作为终点，再规划路线。</p>
+<div id="placeResults" role="group" aria-label="地点搜索结果" style="display:grid;gap:8px;margin:10px 0"></div>
+<p id="placeSelected" class="sub" hidden></p>
+<label>地图点击操作 <select id="navClickMode" style="padding:8px"><option value="destination">设置自动规划终点</option><option value="manual">添加手动航点</option></select></label>
+<div id="navMap" style="height:310px;border-radius:12px;background:#e3eaf0;z-index:0;scroll-margin-top:calc(min(28vh,280px) + 140px)" aria-label="导航选点地图"></div>
+<div class="camera-buttons" style="margin-top:10px"><button id="navTiles">重新加载底图</button><button id="navCenter">定位到小车</button><button id="navUndo">撤销最后一点</button><button id="navClear">清空草稿</button></div>
+<p id="navMapHint" class="sub">底图来源：OpenStreetMap。点击地图添加航点，绿色圆点是小车，浅绿圆是定位误差范围。地图不可用时可输入 WGS84 经纬度。</p>
+<div class="camera-buttons"><button id="amapPlan">规划路线并载入</button><button id="amapImport" disabled hidden>使用这条路线</button></div>
+<p id="amapState" role="status" class="sub">先在地图上点击终点。路线来源为高德，底图为 OSM；Key 保存在服务器。</p>
+<p class="sub">地图标出的人行横道需人工处理，当前不开放自动过街；摄像头红绿灯识别尚未接入。</p>
+<details id="amapDetails" hidden><summary>查看转向提示与路线注意事项</summary><ol id="amapInstructions" class="sub"></ol></details>
+<details><summary>手动航点和方向微调（可选）</summary>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><label>纬度 <input id="navLat" type="number" min="-85" max="85" step="any" style="width:120px;padding:8px"></label><label>经度 <input id="navLng" type="number" min="-180" max="180" step="any" style="width:120px;padding:8px"></label><button id="navAdd">添加航点</button></div>
+<ol id="navPoints" class="sub"></ol>
+<label>到达半径 <select id="navRadius" style="padding:8px"><option value="5">5 米</option><option value="10">10 米</option><option value="15">15 米</option><option value="20" selected>20 米</option><option value="30">30 米</option></select></label>
+<p class="sub">定位误差须小于到达半径的一半，且不超过10米；相邻航点间距须大于到达半径的2倍。室内数米距离无法依靠普通手机定位完成。</p>
+<div class="camera-buttons"><button id="navSave">保存手动航点路线</button><button id="navCalibrate">车头已对准黄色参考点，校准</button></div>
+</details>
+<p id="navDraft" class="sub">请先添加航点并保存。</p>
+<p id="navStatus" role="status">等待 PC 导航计算</p>
+<p id="navMetrics" class="sub"></p>
+<p class="sub">手机固定后，自动使用镜头绝对朝向；偏转较大时先调整行驶方向。传感器权限只需在手机上授权一次。到达范围内停车，连续3次新定位确认后结束。路线仅保留到服务器重启。手持测试允许较粗定位，仅显示指令；不会放宽车辆驾驶的定位和路段检查。</p>
+</section><section class="panel" id="visionPanel">
+<div class="top"><strong>自主找路测试 · 无需导航</strong><span id="visionStatus" class="sub">正在连接 PC</span></div>
+<p class="sub">不需要目的地、GPS 或车头校准。沿车尾镜头方向倒行，左右按镜头画面匹配。行驶使用固定设定功率；近处地面仍确认可走时，短暂通路评分波动保留上次转向最多0.5秒。找不到通路时原地旋转找路：每次旋转0.6秒、停0.3秒观察，最多尝试6秒；一帧有效通路即恢复行驶。画面过期仍停车等待。橙色框为收近后的近处检测区；这是图像区域，无法换算精确停车距离。手动停止、急停或断连后需重新开启。</p>
+<img id="visionImage" alt="PC 识别的地面与建议方向" hidden style="width:100%;max-height:300px;object-fit:contain;border-radius:10px;background:#101820">
+<p id="visionObserve" class="sub">等待视觉判断</p>
+<p class="sub">结合较远处通路提前转向；转向力度已增强。已取消视觉油门比例和短暂波动的降功率规则。偏暗或路面颠簸本身不触发停车，仍检查画面与通路是否有效。</p>
+<div class="speed"><label for="visionSpeed">自动直行输出功率</label><input id="visionSpeed" type="range" min="15" max="100" step="5" value="80"><output id="visionSpeedValue">80%</output></div>
+<div class="camera-buttons"><button id="visionArm" disabled>开启自主找路测试（无需路线）</button><button id="visionStop" class="stop">停止自动驾驶</button><button id="phoneSensors">允许本机定位与运动数据</button></div>
+<div style="margin-top:14px;padding:12px;border:2px solid #cf8400;border-radius:12px">
+<button id="boldTest" style="background:#f8ca72;touch-action:none;user-select:none;-webkit-user-select:none">按住：大胆测试 · 忽略视觉直行</button>
+<p class="sub">仅在你能直接看见小车的空旷场地使用。按住时忽略画面过期、过暗、模糊和地面识别结果，以80%功率沿镜头方向倒行；每轮最多8秒。松手、切出页面、断连或急停立即停。此按钮为人工监督测试。</p>
+<p id="boldState" class="sub">未按住，不执行大胆测试</p>
+</div>
+<p id="autoTestReady" role="status" class="sub">正在检查自主找路条件…</p>
+<div style="background:#edf3fc;padding:14px;border-radius:12px;overflow-wrap:anywhere">
+<strong>实时方向与行驶命令</strong>
+<p id="autoDecision">视觉建议：等待画面</p>
+<p id="autoCommand">实际下发：等待命令</p>
+<p id="autoFeedback">电机反馈：等待车辆状态</p>
+<p class="sub">直行固定按所选功率输出，默认80%、最高100%；转向通过左右轮差速完成。大胆测试固定80%，不随此滑块变化。固定功率不等于实际车速恒定。调整功率后需重新开启。</p>
+<p id="autoLastError" class="sub" hidden></p>
+<details><summary>最近命令变化（仅下发记录，非执行确认）</summary><ol id="autoCommandHistory" class="sub"></ol></details>
+</div>
+<p id="phonePermission" class="sub">在车上的 iPhone 上授权数据；保持摄像头朝前、手机固定。驾驶操作页与手机采集页都需保持前台。</p>
+<p id="phoneReadout" class="sub">尚未收到手机数据</p>
+<p class="sub">绿色为模型推测，不代表距离或通行保证。此版不能可靠识别玻璃、台阶落差；仅在平坦空旷场地低速测试。手动方向、手柄油门和急停可接管。</p>
+</section></aside></div>
+<link rel="stylesheet" href="assets/leaflet.css"><script src="assets/leaflet.js"></script>
+<script>
+const CLOUD_BASE="/car/__CONTROL_KEY__/";
+const client=Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+let seq=0,online=false,holding=false,vector={x:0,y:0},pointer=null,keys=new Set(),driveBusy=false,driveAbort=null,polling=false,testBusy=false;
+const phase=document.getElementById('phase'),message=document.getElementById('message'),speed=document.getElementById('speed');
+const dirs=[...document.querySelectorAll('.direction')];
+const mapping={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};
+function updateButtons(){dirs.forEach(b=>b.disabled=!online||testBusy||gamepadMappingActive())}
+function show(d){online=d.cloud_online!==false;testBusy=d.motor_mode==='test'&&d.motor_running;document.getElementById('connection').textContent='已连接 · '+(d.ip||d.ap_ip||'');document.getElementById('power').textContent='A '+(d.a_percent||0)+'% · B '+(d.b_percent||0)+'%';
+if(!online){phase.textContent='车辆离线';document.getElementById('connection').textContent='服务器已连接 · 车辆离线';updateButtons();return}const p={stopped:'已停止',timeout:'指令中断，已自动停止',starting:'准备测试',a:'电机 A 测试中',b:'电机 B 测试中',both:'两只电机测试中'};
+if(d.motor_mode==='drive'&&d.motor_running){phase.textContent=holding?'手柄控制中':'电机运行中'}else{phase.textContent=p[d.motor_phase]||'已停止'}if(d.motor_error)message.textContent='电机异常：'+d.motor_error;updateButtons()}
+async function request(path,data,timeout=1200,controller){const c=controller||new AbortController();const timer=setTimeout(()=>c.abort(),timeout);try{const r=await fetch(path,{method:data===undefined?'GET':'POST',headers:data===undefined?{}:{'Content-Type':'application/json'},body:data===undefined?undefined:JSON.stringify(data),cache:'no-store',signal:c.signal});const d=await r.json();if(!r.ok)throw Error(d.error||r.status);return d}finally{clearTimeout(timer)}}
+function payload(){return {client,seq:++seq,x:vector.y?-vector.x*.25:-vector.x,y:vector.y,speed:Number(speed.value),invert_a:document.getElementById('invertA').checked,invert_b:document.getElementById('invertB').checked}}
+function clearInput(){holding=false;vector={x:0,y:0};pointer=null;keys.clear();dirs.forEach(b=>b.classList.remove('active'));if(driveAbort)driveAbort.abort();updateButtons()}
+async function stop(disarm=true){if(disarm)gamepadReady=false;clearInput();gamepadOwns=false;const data={client,seq:++seq};try{show(await request(CLOUD_BASE+'api/motor/stop',data,1000));message.textContent='已停止。'}catch(e){online=false;updateButtons();message.textContent='停止指令未确认，请直接断开电机电源。'}}
+async function sendDrive(){if(!holding||driveBusy)return;driveBusy=true;const data=payload(),c=new AbortController();driveAbort=c;try{const d=await request(CLOUD_BASE+'api/drive',data,500,c);if(holding&&data.seq===seq)show(d)}catch(e){if(holding){clearInput();online=false;message.textContent='控制连接中断，请确认电机停止。';stop()}}finally{driveBusy=false;if(driveAbort===c)driveAbort=null}}
+function engage(x,y){if(!online||testBusy||gamepadMappingActive())return;vector={x,y};holding=!!(x||y);dirs.forEach(b=>b.classList.toggle('active',Number(b.dataset.x)===x&&Number(b.dataset.y)===y));updateButtons();if(holding){message.textContent='松手即停';sendDrive()}else stop()}
+dirs.forEach(b=>{b.addEventListener('pointerdown',e=>{if(pointer!==null||holding)return;e.preventDefault();pointer=e.pointerId;b.setPointerCapture(e.pointerId);engage(Number(b.dataset.x),Number(b.dataset.y))});b.addEventListener('pointerup',e=>{if(pointer===e.pointerId)stop()});b.addEventListener('pointercancel',e=>{if(pointer===e.pointerId)stop()});b.addEventListener('lostpointercapture',e=>{if(pointer===e.pointerId)stop()});b.addEventListener('contextmenu',e=>e.preventDefault())});
+window.addEventListener('pointerup',e=>{if(pointer===e.pointerId)stop()});
+function keyboardVector(){engage(Number(keys.has('right'))-Number(keys.has('left')),Number(keys.has('up'))-Number(keys.has('down')))}
+window.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();stop();return}if(['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName))return;const key=mapping[e.key];if(!key||pointer!==null)return;e.preventDefault();if(!keys.has(key)){keys.add(key);keyboardVector()}});
+window.addEventListener('keyup',e=>{const key=mapping[e.key];if(!key||!keys.has(key))return;e.preventDefault();keys.delete(key);keyboardVector()});
+document.getElementById('centerStop').onclick=()=>stop();document.getElementById('emergency').onclick=()=>stop();
+speed.addEventListener('input',()=>{document.getElementById('speedValue').textContent=speed.value+'%'});
+['invertA','invertB'].forEach(id=>document.getElementById(id).addEventListener('change',stop));
+async function refresh(){if(polling||driveBusy)return;polling=true;try{show(await request(CLOUD_BASE+'api/status'))}catch(e){online=false;updateButtons();document.getElementById('connection').textContent='连接中断';if(holding)stop()}finally{polling=false}}
+function leave(){gamepadPageActive=false;gamepadReady=false;gamepadOwns=false;clearInput();navigator.sendBeacon(CLOUD_BASE+'api/motor/stop',JSON.stringify({client,seq:++seq}))}
+window.addEventListener('blur',()=>{gamepadPageActive=false;gamepadReady=false;if(holding||testBusy)stop()});window.addEventListener('focus',()=>claimControl());document.addEventListener('visibilitychange',()=>{if(document.hidden){leave()}else{claimControl();refresh()}});window.addEventListener('pagehide',leave);
+let padLearning=null,padMapCache=new Map(),padKeyDown=new Set(),padCurrentRaw=null,padKeyCandidate=null;
+function padMapKey(p){return 'car-pad-map-v1:'+p.id+':'+p.axes.length+':'+p.buttons.length}
+function padMapLoad(p){
+ const key=padMapKey(p);if(padMapCache.has(key))return padMapCache.get(key);
+ let mapping=null;try{mapping=JSON.parse(localStorage.getItem(key)||'null')}catch(e){}
+ if(mapping&&!padMapValid(mapping,p))mapping=null;
+ padMapCache.set(key,mapping);return mapping;
+}
+function padBindingValid(b,p){return b&&(b.kind==='key'&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','PageUp','PageDown'].includes(b.key)||['axis','button'].includes(b.kind)&&Number.isInteger(b.index)&&b.index>=0&&b.index<(b.kind==='axis'?p.axes.length:p.buttons.length)&&Number.isFinite(b.rest)&&Number.isFinite(b.pressed)&&Math.abs(b.pressed-b.rest)>.3)}
+function padMapValid(m,p){return m&&padBindingValid(m.rt,p)&&padBindingValid(m.lt,p)&&JSON.stringify(m.rt)!==JSON.stringify(m.lt)&&Number.isInteger(m.steer)&&m.steer>=0&&m.steer<p.axes.length&&[m.rt,m.lt].every(b=>b.kind!=='axis'||b.index!==m.steer)}
+function padReadBinding(b,p){
+ if(b.kind==='key')return padKeyDown.has(b.key)?1:0;
+ const value=b.kind==='axis'?p.axes[b.index]:p.buttons[b.index]?.value;
+ return typeof value==='number'&&Number.isFinite(value)?Math.max(0,Math.min(1,(value-b.rest)/(b.pressed-b.rest))):0;
+}
+function normalizeBrowserGamepad(p){
+ padCurrentRaw=p;const m=padMapLoad(p),state=document.getElementById('padMapState');
+ if(!padLearning)state.textContent=m?'已使用本机修正映射：RT 前进、LT 后退；松开油门停车。':'标准映射：RT 按钮7、LT 按钮6；识别错误时可修正。';
+ document.getElementById('padRawInput').textContent='mapping='+String(p.mapping||'未标准化')+' · axes '+p.axes.map((v,i)=>i+':'+Number(v).toFixed(2)).join(' ')+' · buttons '+p.buttons.map((b,i)=>b.value>.05?i+':'+b.value.toFixed(2):'').filter(Boolean).join(' ')+(padKeyDown.size?' · keys '+[...padKeyDown].join(', '):'');
+ return {index:p.index,id:p.id,mapping:p.mapping,raw:p,x:Math.max(-1,Math.min(1,p.axes[m?m.steer:0]||0)),y:0,
+  lt:m?padReadBinding(m.lt,p):p.buttons[6]?.value||0,rt:m?padReadBinding(m.rt,p):p.buttons[7]?.value||0,
+  lb:!!p.buttons[4]?.pressed,b:!!p.buttons[1]?.pressed,
+  up:!!p.buttons[12]?.pressed,down:!!p.buttons[13]?.pressed,left:!!p.buttons[14]?.pressed,right:!!p.buttons[15]?.pressed};
+}
+function gamepadMappingActive(){return !!padLearning}
+function padValues(p){return {axes:[...p.axes],buttons:p.buttons.map(b=>b.value)}}
+function padLearnMessage(text){document.getElementById('padMapState').textContent=text}
+function padLearningCancel(text){padLearning=null;padKeyCandidate=null;padKeyDown.clear();gamepadReady=false;padLearnMessage(text);updateButtons()}
+function samePad(p){return p&&padLearning&&padMapKey(p)===padLearning.key&&p.index===padLearning.index}
+function padBestChange(p,rest,steerOnly=false){
+ const candidates=[];
+ if(!steerOnly)p.buttons.forEach((b,index)=>{const delta=b.value-rest.buttons[index];if(delta>.55)candidates.push({kind:'button',index,rest:rest.buttons[index],pressed:b.value,score:delta})});
+ p.axes.forEach((value,index)=>{const delta=value-rest.axes[index];if(Math.abs(delta)>.55&&(!steerOnly||delta<0))candidates.push({kind:'axis',index,rest:rest.axes[index],pressed:value,score:Math.abs(delta)})});
+ candidates.sort((a,b)=>b.score-a.score||(a.kind==='button'?-1:1));return candidates[0]||null;
+}
+function padIsReleased(p,rest){return p.axes.every((v,i)=>Math.abs(v-rest.axes[i])<.18)&&p.buttons.every((b,i)=>Math.abs(b.value-rest.buttons[i])<.15)&&!padKeyDown.size}
+function gamepadMappingTick(p){
+ if(!samePad(p)){padLearningCancel('手柄已断开或切换，识别已取消。');return}
+ const s=padLearning,now=Date.now();
+ if(now-s.started>45000){padLearningCancel('识别超时，未修改映射；请重新点击后按提示操作。');return}
+ if(s.stage==='neutral'){
+  const values=padValues(p);
+  if(!s.last||values.axes.some((v,i)=>Math.abs(v-s.last.axes[i])>.08)||values.buttons.some((v,i)=>Math.abs(v-s.last.buttons[i])>.08))s.stable=now;
+  s.last=values;if(now-s.stable<700)return;
+  s.rest=values;s.stage='rt';s.since=now;padLearnMessage('第1步：只按住 RT 到底；其它按钮和摇杆保持松开。');return;
+ }
+ if(s.stage==='release_rt'||s.stage==='release_lt'){
+  if(!padIsReleased(p,s.rest))return;
+  s.stage=s.stage==='release_rt'?'lt':'steer';s.since=now;padKeyCandidate=null;
+  padLearnMessage(s.stage==='lt'?'第2步：只按住 LT 到底。':'第3步：只把左摇杆向左推到底，用于确认方向轴。');return;
+ }
+ if(s.stage==='finish'){
+  if(!padIsReleased(p,s.rest))return;
+  const map={rt:s.rt,lt:s.lt,steer:s.steer};
+  if(!padMapValid(map,p)){padLearningCancel('输入存在冲突，未保存；请保持其它按钮松开后重试。');return}
+  padMapCache.set(s.key,map);try{localStorage.setItem(s.key,JSON.stringify(map))}catch(e){}
+  padLearningCancel('映射已保存：RT 前进、LT 后退、左摇杆转向。现在可重新操作。');return;
+ }
+ const candidate=padBestChange(p,s.rest,s.stage==='steer');
+ const binding=candidate||((s.stage==='rt'||s.stage==='lt')&&padKeyCandidate&&now-padKeyCandidate.at>=250?{kind:'key',key:padKeyCandidate.key}:null);
+ if(!binding)return;
+ if(s.stage==='steer'){
+  if([s.rt,s.lt].some(b=>b.kind==='axis'&&b.index===binding.index)){padLearnMessage('检测到扳机轴；请松开扳机，只向左推左摇杆。');return}
+  s.steer=binding.index;s.stage='finish';padLearnMessage('请松开左摇杆，保存后即可使用。');return;
+ }
+ const selected={...binding};delete selected.score;
+ if(s.stage==='lt'&&s.rt.kind===selected.kind&&(selected.kind==='key'?s.rt.key===selected.key:s.rt.index===selected.index)&&Math.sign((s.rt.pressed||1)-(s.rt.rest||0))===Math.sign((selected.pressed||1)-(selected.rest||0))){padLearnMessage('检测到与 RT 相同输入，请只按 LT。');return}
+ s[s.stage]=selected;s.stage=s.stage==='rt'?'release_rt':'release_lt';padKeyCandidate=null;padLearnMessage('已识别，请完全松开扳机后继续。');
+}
+document.getElementById('padLearn').onclick=async()=>{
+ if(['localhost','127.0.0.1'].includes(location.hostname)){padLearnMessage('本机 XInput 已直接区分 LT / RT，无需浏览器映射。');return}
+ const p=[...(navigator.getGamepads?.()||[])].find(p=>p&&String(p.index)===document.getElementById('controllerSelect').value);
+ if(!p){padLearnMessage('未检测到 Gamepad；请按一下 A 键。若仍未识别，请将手柄切到 iOS / XInput 模式后重连。');return}
+ padLearning={key:padMapKey(p),index:p.index,stage:'neutral',started:Date.now(),stable:Date.now(),last:null};padKeyCandidate=null;padKeyDown.clear();gamepadReady=false;
+ if(typeof visionDisable==='function')visionDisable();hapticStop();await stop();
+ padLearnMessage('识别期间小车不动。先松开所有按键和摇杆，等待第1步提示。');
+};
+document.getElementById('padMapReset').onclick=()=>{
+ if(padCurrentRaw){const key=padMapKey(padCurrentRaw);padMapCache.delete(key);try{localStorage.removeItem(key)}catch(e){}}
+ padLearningCancel('已恢复标准映射；松开油门后重新操作。');stop();
+};
+function padCaptureKey(e,pressed){
+ if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','PageUp','PageDown'].includes(e.key))return;
+ const map=padCurrentRaw&&padMapLoad(padCurrentRaw),bound=map&&[map.rt,map.lt].some(b=>b.kind==='key'&&b.key===e.key);
+ if(!padLearning&&!bound)return;
+ e.preventDefault();e.stopImmediatePropagation();
+ if(pressed){padKeyDown.add(e.key);if(padLearning&&['rt','lt'].includes(padLearning.stage)&&!e.repeat&&!padKeyCandidate)padKeyCandidate={key:e.key,at:Date.now()}}
+ else padKeyDown.delete(e.key);
+}
+window.addEventListener('keydown',e=>padCaptureKey(e,true),true);window.addEventListener('keyup',e=>padCaptureKey(e,false),true);
+window.addEventListener('blur',()=>{padKeyDown.clear();if(padLearning)padLearningCancel('页面已切出，识别已取消。')});
+
+let hapticIndex=null,hapticLastAt=0,hapticLastSample=0,hapticActive=false,hapticActuator=null,hapticSupported=null,hapticBusy=false,hapticPollBusy=false,hapticTestUntil=0,hapticCommandVersion=0;
+const hapticNative=['127.0.0.1','localhost'].includes(location.hostname);
+const hapticState=document.getElementById('hapticState'),hapticGain=document.getElementById('hapticGain');
+const hapticCapability=document.getElementById('hapticCapability'),hapticCommandState=document.getElementById('hapticCommandState');
+function hapticProbe(){
+ if(hapticNative){hapticCapability.textContent='震动接口：Windows XInput，需连接手柄并实测';return true}
+ const p=navigator.getGamepads?.()[hapticIndex];hapticActuator=p?.vibrationActuator||p?.hapticActuators?.[0];
+ const supported=typeof hapticActuator?.playEffect==='function'||typeof hapticActuator?.pulse==='function';
+ const ipad=/iPad|iPhone/.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+ hapticCapability.textContent=supported?'震动接口：浏览器已提供，实物效果待测试':ipad?'震动接口：iPad / iPhone Safari 未提供手柄震动接口，网页无法让 Xbox 手柄震动':'震动接口：此浏览器或手柄没有提供，不能输出震动';
+ hapticSupported=supported;return supported;
+}
+try{const saved=Number(localStorage.getItem('car-haptic-gain'));if(localStorage.getItem('car-haptic-gain')!==null&&Number.isFinite(saved))hapticGain.value=String(Math.max(0,Math.min(100,saved)))}catch(e){}
+document.getElementById('hapticGainValue').textContent=hapticGain.value+'%';
+function hapticGainValue(){return Math.max(0,Math.min(1,Number(hapticGain.value)/100))}
+function hapticStop(){
+ if(!hapticActive)return;hapticActive=false;hapticCommandVersion++;hapticCommandState.textContent='震动指令：已停止';
+ if(hapticNative&&hapticIndex!==null)request('/api/vibration',{index:hapticIndex,strong:0,weak:0,duration_ms:0},400).catch(()=>{});
+ else if(hapticActuator?.reset)Promise.resolve(hapticActuator.reset()).catch(()=>{});
+}
+function hapticLost(){hapticStop();hapticIndex=null;hapticSupported=null;hapticState.textContent='视频颠簸反馈：等待手柄连接';hapticCapability.textContent='震动接口：未连接手柄'}
+function hapticPadSeen(index){if(index!==hapticIndex){hapticStop();hapticIndex=index;hapticSupported=null;hapticProbe();hapticState.textContent='视频颠簸反馈：已连接，等待行驶画面'}}
+function hapticEffect(level,force=false){
+ if(hapticIndex===null||document.hidden||!gamepadPageActive||lastPadB)return;
+ if(!force&&Date.now()-hapticLastAt<140)return;
+ hapticLastAt=Date.now();const strength=Math.max(0,Math.min(1,level*hapticGainValue()));
+ if(strength<.025){hapticStop();return}
+ const version=++hapticCommandVersion;
+ if(hapticNative){
+  if(hapticBusy)return;hapticBusy=true;hapticActive=true;
+  request('/api/vibration',{index:hapticIndex,strong:strength*.7,weak:strength,duration_ms:220},400)
+   .then(()=>{if(version!==hapticCommandVersion)return;hapticSupported=true;hapticCommandState.textContent='震动指令：XInput 已接受 '+Math.round(strength*100)+'% / 220ms（实物效果待确认）'}).catch(()=>{if(version!==hapticCommandVersion)return;hapticActive=false;hapticSupported=false;hapticCommandState.textContent='震动指令：发送失败';hapticState.textContent='本机手柄震动不可用，请检查手柄连接'}).finally(()=>{hapticBusy=false});
+  return;
+ }
+ try{
+  const pad=navigator.getGamepads?.()[hapticIndex];hapticActuator=pad?.vibrationActuator||pad?.hapticActuators?.[0];
+  let result;
+  if(hapticActuator?.playEffect)result=hapticActuator.playEffect('dual-rumble',{duration:220,startDelay:0,strongMagnitude:strength*.7,weakMagnitude:strength});
+  else if(hapticActuator?.pulse)result=hapticActuator.pulse(strength,220);
+  else{hapticProbe();hapticSupported=false;hapticCommandState.textContent='震动指令：未发送，浏览器无输出接口';hapticState.textContent='只计算到了视频抖动，未产生手柄震动';return}
+  hapticActive=true;hapticSupported=true;
+  Promise.resolve(result).then(value=>{if(version!==hapticCommandVersion)return;if(value===false)throw Error('Unsupported');hapticCommandState.textContent='震动指令：浏览器返回 '+String(value||'完成')+'（实物效果待确认）'}).catch(()=>{if(version!==hapticCommandVersion)return;hapticSupported=false;hapticCommandState.textContent='震动指令：浏览器拒绝';hapticState.textContent='震动被浏览器拒绝，可点击“试一下震动”重试'});
+ }catch(e){hapticSupported=false;hapticStop();hapticState.textContent='当前手柄不支持浏览器震动反馈'}
+}
+function hapticPush(sample){
+ if(Date.now()<hapticTestUntil)return;
+ const valid=sample?.valid===true&&sample.moving===true&&Number.isFinite(sample.intensity)&&sample.intensity>=0&&sample.intensity<=1&&Number.isFinite(sample.frame_age_ms)&&sample.frame_age_ms<=450;
+ hapticLastSample=Date.now();
+ if(!valid||document.hidden||!gamepadPageActive||lastPadB){hapticStop();hapticState.textContent='视频颠簸反馈：'+(sample?.moving?'等待可分析的新鲜画面':'车辆静止，震动停止');return}
+ if(hapticIndex===null){hapticState.textContent='视频颠簸 '+Math.round(sample.intensity*100)+'% · 请连接手柄';return}
+ if(!hapticGainValue()){hapticStop();hapticState.textContent='视频震动反馈已静音（强度0%）';return}
+ hapticState.textContent='视频颠簸计算值 '+Math.round(sample.intensity*100)+'%'+(hapticSupported===false?' · 未输出震动':' · 请求震动强度 '+Math.round(sample.intensity*hapticGainValue()*100)+'%');
+ hapticEffect(sample.intensity);
+}
+document.getElementById('hapticTest').onclick=()=>{
+ if(hapticIndex===null){hapticState.textContent='请连接手柄并按一下 A 键，再试震动';return}
+ if(!hapticProbe()){hapticState.textContent='无法测试震动：当前浏览器没有输出接口';hapticCommandState.textContent='震动指令：未发送';return}
+ hapticTestUntil=Date.now()+260;hapticState.textContent='正在请求手柄震动（不会驱动小车）';hapticEffect(.7,true);
+};
+hapticGain.oninput=()=>{document.getElementById('hapticGainValue').textContent=hapticGain.value+'%';try{localStorage.setItem('car-haptic-gain',hapticGain.value)}catch(e){}if(!hapticGainValue())hapticStop()};
+setInterval(()=>{if(Date.now()>=hapticTestUntil&&(Date.now()-hapticLastSample>600||document.hidden||!gamepadPageActive))hapticStop()},100);
+if(hapticNative)setInterval(async()=>{
+ if(hapticPollBusy||document.hidden)return;hapticPollBusy=true;
+ try{hapticPush(await request('/api/feedback',undefined,650))}catch(e){hapticStop();hapticState.textContent='视频反馈连接中断，震动已停止'}finally{hapticPollBusy=false}
+},200);
+window.addEventListener('blur',hapticStop);window.addEventListener('pagehide',hapticStop);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)hapticStop()});
+for(const id of ['emergency','centerStop'])document.getElementById(id).addEventListener('click',hapticStop);
+
+let gamepadOwns=false,gamepadReady=false,padPolling=false,lastPadB=false,gamepadPageActive=!document.hidden;
+const nativeController=['127.0.0.1','localhost'].includes(location.hostname);
+const padSelect=document.getElementById('controllerSelect');
+function stickDeadzone(v){const d=.18;return Math.abs(v)<=d?0:Math.sign(v)*(Math.abs(v)-d)/(1-d)}
+function triggerValue(v){const d=.07;return v<=d?0:Math.min(1,(v-d)/(1-d))}
+function triggerDrive(p){const rt=triggerValue(Number(p.rt)||0),lt=triggerValue(Number(p.lt)||0);const y=rt&&lt?0:rt-lt;const steering=stickDeadzone(p.x);return {x:Math.round(steering*y*1000)/1000,y:Math.round(y*1000)/1000,neutral:!rt&&!lt}}
+function browserPads(){
+ if(typeof navigator.getGamepads!=='function')throw Error('此页面无法读取手柄，请使用电脑本机控制页');
+ return [...navigator.getGamepads()].filter(Boolean).map(normalizeBrowserGamepad);
+}
+function processPad(pads){
+ const signature=pads.map(p=>p.index+':'+p.id).join('|');
+ if(padSelect.dataset.signature!==signature){const previous=padSelect.value;padSelect.replaceChildren();pads.forEach(p=>{const o=document.createElement('option');o.value=String(p.index);o.textContent=p.id;padSelect.append(o)});if(pads.some(p=>String(p.index)===previous))padSelect.value=previous;padSelect.dataset.signature=signature;gamepadReady=false}
+ const p=pads.find(p=>String(p.index)===padSelect.value);
+ if(!p){hapticLost();document.getElementById('controllerState').textContent='未检测到手柄；请连接后按一下 A 键。';document.getElementById('controllerLive').textContent='';if(gamepadOwns)stop();gamepadReady=false;return}
+ hapticPadSeen(p.index);
+ if(gamepadMappingActive()){gamepadMappingTick(p.raw);gamepadReady=false;return}
+ document.getElementById('controllerState').textContent='已读取：'+p.id;
+ document.getElementById('controllerLive').textContent='方向 '+p.x.toFixed(2)+' · RT '+Math.round((p.rt||0)*100)+'% · LT '+Math.round((p.lt||0)*100)+'% · B '+(p.b?'按下':'松开');
+ if(p.b){hapticStop();if(!lastPadB){stop();message.textContent='手柄 B 键急停；先松开 B、RT 和 LT，再重新操作。'}lastPadB=true;gamepadReady=false;return}lastPadB=false;
+ if(!gamepadPageActive||document.hidden){if(gamepadOwns)stop();gamepadReady=false;return}
+ const command=triggerDrive(p);
+ if(!gamepadReady){if(command.neutral){gamepadReady=true;document.getElementById('controllerHint').textContent='已就绪：RT 前进加速，LT 后退，左摇杆左右转向。'}else{document.getElementById('controllerHint').textContent='请先松开 RT 和 LT，再开始驾驶。'}return}
+ if(!gamepadReady||!online||testBusy||pointer!==null||keys.size)return;
+ const x=command.x,y=command.y;
+ if(!y){if(gamepadOwns)stop(false);return}
+ if(!gamepadOwns||Math.abs(vector.x-x)>.025||Math.abs(vector.y-y)>.025){engage(x,y);gamepadOwns=true;message.textContent=y>0?'RT 前进中：松开油门即停，B 键急停。':'LT 后退中：松开油门即停，B 键急停。'}
+}
+async function pollController(){
+ if(padPolling||document.hidden)return;padPolling=true;
+ try{let pads;if(nativeController){const d=await request(CLOUD_BASE+'api/gamepad',undefined,500);pads=d.gamepads}else{pads=browserPads()}processPad(pads)}
+ catch(e){document.getElementById('controllerState').textContent=e.message||'手柄读取失败';if(gamepadOwns)stop();gamepadReady=false}
+ finally{padPolling=false}
+}
+padSelect.addEventListener('change',()=>{gamepadReady=false;stop(false)});
+document.getElementById('localController').hidden=true;
+pollController();setInterval(pollController,100);
+
+
+
+const controlChannel=typeof BroadcastChannel==='function'?new BroadcastChannel('esp32-motor-controller'):null;
+function claimControl(){gamepadPageActive=true;gamepadReady=false;if(controlChannel)controlChannel.postMessage({type:'claim',client})}
+if(controlChannel)controlChannel.onmessage=e=>{if(e.data?.type==='claim'&&e.data.client!==client){gamepadPageActive=false;stop();message.textContent='另一个控制页已接管；切回本页并松开油门即可恢复。'}};
+if(!document.hidden){claimControl()}else{gamepadPageActive=false;gamepadReady=false}
+
+let videoSocket=null,cameraStream=null,cameraTimer=null,frameBusy=false,videoRetry=null,frameURL=null,lastVideoFrameAt=0,videoWasActive=false,cameraStarting=false;
+const liveImage=document.getElementById('liveImage'),cameraPreview=document.getElementById('cameraPreview'),liveState=document.getElementById('liveState'),liveEmpty=document.getElementById('liveEmpty'),cameraMessage=document.getElementById('cameraMessage');
+function videoConnect(){
+ if(document.hidden||videoSocket&&(videoSocket.readyState===WebSocket.OPEN||videoSocket.readyState===WebSocket.CONNECTING))return;
+ const ws=new WebSocket('wss://'+location.host+CLOUD_BASE+'camera');videoSocket=ws;ws.binaryType='blob';
+ ws.onopen=()=>{liveState.textContent='直播连接正常，等待摄像头'};
+ ws.onmessage=e=>{
+  if(typeof e.data==='string'){
+   const info=JSON.parse(e.data);if(info.type!=='camera')return;if(Number.isFinite(info.server_time))visionOffset=info.server_time-Date.now();
+   if(cameraStream){liveState.textContent='本机推流中 · '+info.viewers+' 个观看端'}else if(info.online){liveState.textContent='摄像头在线'}else{liveState.textContent='摄像头未开启';liveImage.hidden=true;liveEmpty.hidden=false;if(videoWasActive&&holding)stop()}
+   return;
+  }
+  if(cameraStream)return;
+  const previous=frameURL;frameURL=URL.createObjectURL(e.data);liveImage.onload=()=>{if(previous)URL.revokeObjectURL(previous)};liveImage.src=frameURL;liveImage.hidden=false;liveEmpty.hidden=true;
+  lastVideoFrameAt=Date.now();videoWasActive=true;liveState.textContent='实时画面';
+ };
+ ws.onclose=()=>{if(videoSocket!==ws)return;videoSocket=null;stopCamera(false);liveState.textContent='直播连接中断';liveImage.hidden=true;liveEmpty.hidden=false;if(videoWasActive&&holding)stop();if(!document.hidden){clearTimeout(videoRetry);videoRetry=setTimeout(videoConnect,1500)}};
+ ws.onerror=()=>{liveState.textContent='直播连接异常'};
+}
+async function waitVideoSocket(){
+ videoConnect();const end=Date.now()+5000;
+ while(Date.now()<end){if(videoSocket?.readyState===WebSocket.OPEN)return;await new Promise(r=>setTimeout(r,100))}
+ throw Error('直播连接未就绪，请稍后重试');
+}
+async function startCamera(){
+ if(cameraStream||cameraStarting)return;cameraStarting=true;
+ let stream=null;
+ try{
+  if(!navigator.mediaDevices?.getUserMedia)throw Error('当前浏览器不支持相机，请用手机 Safari 或 Chrome 打开此 HTTPS 页面');
+  cameraMessage.textContent='请允许摄像头权限…';
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:640},height:{ideal:360},frameRate:{ideal:15,max:15}},audio:false});
+  if(document.hidden){stream.getTracks().forEach(t=>t.stop());throw Error('请保持页面在前台')}
+  await waitVideoSocket();cameraStream=stream;cameraPreview.srcObject=stream;cameraPreview.hidden=false;liveImage.hidden=true;liveEmpty.hidden=true;await cameraPreview.play();
+  videoSocket.send(JSON.stringify({type:'publish'}));
+  const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+  cameraTimer=setInterval(()=>{
+   if(frameBusy||!cameraStream||document.hidden||!cameraPreview.videoWidth||videoSocket?.readyState!==WebSocket.OPEN||videoSocket.bufferedAmount>128*1024||driveBusy)return;
+   const vw=cameraPreview.videoWidth,vh=cameraPreview.videoHeight,scale=Math.min(640/vw,360/vh);
+   canvas.width=Math.max(1,Math.round(vw*scale));canvas.height=Math.max(1,Math.round(vh*scale));ctx.drawImage(cameraPreview,0,0,canvas.width,canvas.height);frameBusy=true;const capturedAt=Date.now()+visionOffset;
+   canvas.toBlob(blob=>{try{if(blob&&blob.size<256*1024&&cameraStream===stream&&videoSocket?.readyState===WebSocket.OPEN&&videoSocket.bufferedAmount<128*1024){videoSocket.send(JSON.stringify({type:'frame_meta',at:capturedAt}));videoSocket.send(blob)}}finally{frameBusy=false}},'image/jpeg',.55);
+  },125);
+  for(const track of stream.getTracks())track.addEventListener('ended',()=>stopCamera());
+  liveState.textContent='本机摄像头正在直播';cameraMessage.textContent='后置摄像头已开启。另一台手机或电脑打开同一链接即可观看和驾驶；保持本页在前台。';
+ }catch(e){if(stream&&stream!==cameraStream)stream.getTracks().forEach(t=>t.stop());stopCamera();cameraMessage.textContent='无法开启摄像头：'+e.message}
+ finally{cameraStarting=false}
+}
+function stopCamera(notify=true){
+ clearInterval(cameraTimer);cameraTimer=null;
+ const stream=cameraStream;cameraStream=null;if(stream)stream.getTracks().forEach(t=>t.stop());cameraPreview.srcObject=null;cameraPreview.hidden=true;
+ if(notify&&videoSocket?.readyState===WebSocket.OPEN)videoSocket.send(JSON.stringify({type:'unpublish'}));
+ liveEmpty.hidden=false;if(stream){liveState.textContent='本机摄像头已停止';cameraMessage.textContent='相机已关闭。观看其他手机的直播无需开启本机摄像头。'}
+}
+document.getElementById('startCamera').onclick=startCamera;document.getElementById('stopCamera').onclick=()=>stopCamera();
+document.addEventListener('visibilitychange',()=>{if(document.hidden){stopCamera();if(videoSocket)videoSocket.close()}else videoConnect()});
+window.addEventListener('pagehide',()=>{stopCamera();if(videoSocket)videoSocket.close()});
+setInterval(()=>{if(videoWasActive&&!cameraStream&&lastVideoFrameAt&&Date.now()-lastVideoFrameAt>2500){liveState.textContent='画面中断';liveImage.hidden=true;liveEmpty.hidden=false;if(holding)stop()}},500);
+videoConnect();
+
+const videoFrame=document.getElementById('liveFrame'),videoFullscreen=document.getElementById('videoFullscreen'),videoExitFullscreen=document.getElementById('videoExitFullscreen');
+let videoFallbackFullscreen=false;
+function videoFullscreenSync(){
+ const full=videoFallbackFullscreen||document.fullscreenElement===videoFrame||document.webkitFullscreenElement===videoFrame;
+ videoExitFullscreen.hidden=!full;videoFullscreen.textContent=full?'退出视频全屏':'视频全屏';
+}
+async function exitVideoFullscreen(){
+ if(videoFallbackFullscreen){videoFallbackFullscreen=false;videoFrame.classList.remove('video-fallback-fullscreen');document.body.classList.remove('video-expanded')}
+ else if(document.fullscreenElement&&document.exitFullscreen)await document.exitFullscreen();
+ else if(document.webkitFullscreenElement&&document.webkitExitFullscreen)document.webkitExitFullscreen();
+ videoFullscreenSync();
+}
+videoFullscreen.onclick=async()=>{
+ if(videoFallbackFullscreen||document.fullscreenElement===videoFrame||document.webkitFullscreenElement===videoFrame){await exitVideoFullscreen();return}
+ try{
+  if(videoFrame.requestFullscreen){await videoFrame.requestFullscreen();videoFullscreenSync();return}
+  if(videoFrame.webkitRequestFullscreen){videoFrame.webkitRequestFullscreen();videoFullscreenSync();return}
+ }catch(e){}
+ // CSS fallback also supports browsers without element fullscreen for JPEG.
+ videoFallbackFullscreen=true;videoFrame.classList.add('video-fallback-fullscreen');document.body.classList.add('video-expanded');videoFullscreenSync();
+};
+videoExitFullscreen.onclick=exitVideoFullscreen;
+document.addEventListener('fullscreenchange',videoFullscreenSync);document.addEventListener('webkitfullscreenchange',videoFullscreenSync);
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&videoFallbackFullscreen)exitVideoFullscreen()});
+
+function autoDirection(steering){return steering<-.05?'左前方':steering>.05?'右前方':'正前方'}
+function autoNumber(value){return Number.isFinite(value)?value.toFixed(3):'—'}
+function autoCommandText(c){
+ if(!c)return '尚未下发行驶命令';
+ const d=c.data||{};
+ if(c.command==='stop')return 'STOP 停车';
+ if(c.command==='test')return 'TEST 电机测试 '+(d.mode||'');
+ return 'DRIVE '+(d.y>0?autoDirection(-d.x):d.y<0?(c.source==='auto'?'倒行 · 镜头'+autoDirection(-d.x):'后退'):'转向')+' · x='+autoNumber(d.x)+' · y='+autoNumber(d.y)+' · 功率上限 '+d.speed+'% · A反向 '+(d.invert_a?'是':'否')+' / B反向 '+(d.invert_b?'是':'否');
+}
+function autoDiagnosticsRender(s){
+ const d=s.diagnostics;if(!d)return;
+ const blockers=d.explore_blockers||[];
+ document.getElementById('autoTestReady').textContent=s.enabled?(d.mode==='supervised'?'人工监督大胆测试中 · 忽略视觉 · 本轮剩余 '+Math.ceil(d.supervised_remaining_ms/1000)+' 秒':d.paused?s.reason+' · 电机已停车，保持本页前台可自动恢复':d.crawling?s.reason:(s.diagnostics.mode==='explore'?'自主找路测试运行中 · 无需路线和定位':'点到点导航运行中')+(d.camera_rear?' · 镜头朝车尾，倒行':' · 镜头朝车头，前行')):
+  blockers.length?'自主找路暂不能启动：'+blockers.join('；'):'自主找路已就绪：可点击开启；当前未行驶。导航路线的限制不影响此测试。';
+ const p=d.suggestion;
+ document.getElementById('autoDecision').textContent=p?'视觉建议：'+(p.clear?autoDirection(p.steering):'停车')+' · steering='+autoNumber(p.steering)+' · throttle='+autoNumber(p.throttle)+' · '+p.reason:'视觉建议：暂无新鲜结果，保持停车';
+ if(p?.far_scores)document.getElementById('autoDecision').textContent+=' · 远处左/中/右 '+p.far_scores.map(x=>Math.round(x*100)+'%').join(' / ')+(p.turn_early?' · 提前转向':'');
+ const c=d.last_command,age=c?Math.max(0,s.server_time-c.sent_at):null;
+ document.getElementById('autoCommand').textContent='实际下发：'+autoCommandText(c)+(c?' · #'+c.id+' · '+(c.source==='auto'?'自动驾驶':c.source==='manual'?'手动驾驶':'中转服务')+' · '+age+' ms 前 · 有效期 '+c.ttl_ms+' ms':'');
+ if(c?.command==='drive'){
+  const v=c.data,a=v.y+v.x,b=v.y-v.x,scale=Math.max(Math.abs(a),Math.abs(b),1);
+  document.getElementById('autoCommand').textContent+=' · 按命令计算 PWM：A '+Math.trunc(a*v.speed/scale)*(v.invert_a?-1:1)+'% / B '+Math.trunc(b*v.speed/scale)*(v.invert_b?-1:1)+'%';
+ }
+ const f=d.feedback;
+ document.getElementById('autoFeedback').textContent=f?.online?'ESP 软件反馈：'+(f.motor_running?'电机输出中':'已停止')+' · A '+f.a_percent+'% / B '+f.b_percent+'% · '+f.mode+' / '+f.phase+(Number.isFinite(f.command_age_ms)?' · 板端收到命令时延 '+f.command_age_ms+' ms':'')+(f.error?' · 异常：'+f.error:'')+'（无轮速传感器，不能确认轮子实际转动）':'ESP 反馈：车辆离线';
+ const error=document.getElementById('autoLastError');error.hidden=!d.last_error;error.textContent=d.last_error?'最近请求错误：'+d.last_error.message+' · '+new Date(d.last_error.at).toLocaleTimeString():'';
+ const history=document.getElementById('autoCommandHistory');history.replaceChildren();
+ for(const c of [...(d.command_history||[])].reverse()){
+  const li=document.createElement('li');li.textContent=new Date(c.sent_at).toLocaleTimeString()+' · #'+c.id+' · '+autoCommandText(c);history.append(li);
+ }
+}
+
+let phoneGeoWatch=null,phoneLastSent=0,phoneMotion=null,phoneHeading=null,phoneLocation=null;
+let phoneCameraHeading=null,phoneHeadingAt=0,phoneHeadingAccuracy=null,phoneAbsolute=false;
+let phoneGeoEnabled=false,phoneSensorClaimed=false,phoneGpsCallbacks=0,phoneGpsFixes=0,phoneGpsError='',phoneGpsLastCallback=0,phoneGpsRestart=0,phoneGpsPending=false;
+function finiteNumber(v,limit=1e9){return typeof v==='number'&&Number.isFinite(v)&&Math.abs(v)<=limit?v:null}
+function phoneClaim(){if(phoneGeoEnabled&&visionSocket?.readyState===WebSocket.OPEN)visionSocket.send(JSON.stringify({type:'sensor_claim'}))}
+function phoneSend(){
+ if(document.hidden||Date.now()-phoneLastSent<350)return;
+ const data={...phoneLocation,location_age_ms:phoneLocation?Math.max(0,Date.now()-phoneLocation.location_at):null,
+  heading:phoneHeading,motion:phoneMotion,camera_heading:phoneCameraHeading,camera_heading_absolute:phoneAbsolute,
+  heading_accuracy:phoneHeadingAccuracy,heading_age_ms:phoneHeadingAt?Date.now()-phoneHeadingAt:null,
+  gps_callbacks:phoneGpsCallbacks,gps_fixes:phoneGpsFixes,gps_error:phoneGpsError};
+ if(phoneGeoEnabled){if(!phoneSensorClaimed||visionSocket?.readyState!==WebSocket.OPEN)return;phoneLastSent=Date.now();visionSocket.send(JSON.stringify({type:'phone_sensors',...data}))}
+ else if(cameraStream&&videoSocket?.readyState===WebSocket.OPEN){phoneLastSent=Date.now();videoSocket.send(JSON.stringify({type:'sensors',...data}))}
+}
+function phoneGpsSuccess(p){
+ const c=p.coords;phoneGpsCallbacks++;phoneGpsLastCallback=Date.now();phoneGpsError='';
+ if(phoneLocation&&p.timestamp<phoneLocation.location_at)return;
+ if(!phoneLocation||p.timestamp!==phoneLocation.location_at)phoneGpsFixes++;
+ // Keep the browser's original measurement timestamp. A heartbeat or repeated
+ // cached callback must never turn an old fix into a fresh location.
+ phoneLocation={latitude:c.latitude,longitude:c.longitude,accuracy:c.accuracy,speed:finiteNumber(c.speed),course:finiteNumber(c.heading,360),location_at:p.timestamp};
+ document.getElementById('phonePermission').textContent='定位持续启用，可关闭摄像头进行手持导航；保持网页前台。';phoneSend();
+}
+function phoneGpsFailure(e){
+ phoneGpsError=String(e.message||('定位错误 '+e.code));document.getElementById('phonePermission').textContent='定位：'+phoneGpsError;
+ if(e.code===1){phoneGeoEnabled=false;if(phoneGeoWatch!==null)navigator.geolocation.clearWatch(phoneGeoWatch);phoneGeoWatch=null}
+ phoneSend();
+}
+function phoneStartWatch(){
+ if(!phoneGeoEnabled||!navigator.geolocation)return;
+ if(phoneGeoWatch!==null)navigator.geolocation.clearWatch(phoneGeoWatch);
+ phoneGpsRestart=Date.now();phoneGeoWatch=navigator.geolocation.watchPosition(phoneGpsSuccess,phoneGpsFailure,{enableHighAccuracy:true,maximumAge:0,timeout:10000});
+}
+async function requestPhoneSensors(){
+ const status=document.getElementById('phonePermission');status.textContent='正在申请定位和朝向权限…';
+ const permissions=[];
+ if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function')permissions.push(DeviceMotionEvent.requestPermission());
+ if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function')permissions.push(DeviceOrientationEvent.requestPermission());
+ phoneGeoEnabled=true;phoneClaim();phoneStartWatch();
+ const result=await Promise.allSettled(permissions);
+ if(result.some(r=>r.status==='rejected'||r.value==='denied'))status.textContent='部分朝向权限被拒绝；请在浏览器设置中允许运动与方向访问。';
+}
+document.getElementById('phoneSensors').onclick=requestPhoneSensors;
+window.addEventListener('devicemotion',e=>{const a=e.acceleration,r=e.rotationRate;phoneMotion={acceleration:a?{x:finiteNumber(a.x),y:finiteNumber(a.y),z:finiteNumber(a.z)}:null,rotation:r?{alpha:finiteNumber(r.alpha),beta:finiteNumber(r.beta),gamma:finiteNumber(r.gamma)}:null};phoneSend()});
+function cameraCompass(e){
+ if(![e.alpha,e.beta,e.gamma].every(x=>typeof x==='number'&&Number.isFinite(x)))return {heading:null,absolute:false};
+ const d=Math.PI/180,a=e.alpha*d,b=e.beta*d,g=e.gamma*d;
+ const east=-Math.cos(a)*Math.sin(g)-Math.sin(a)*Math.sin(b)*Math.cos(g),north=-Math.sin(a)*Math.sin(g)+Math.cos(a)*Math.sin(b)*Math.cos(g);
+ if(Math.hypot(east,north)<=.35)return {heading:null,absolute:false};
+ const raw=(Math.atan2(east,north)/d+360)%360;
+ // Safari alpha can be relative to an arbitrary reference. Anchor the camera
+ // projection to the actual compass instead of learning a route-point offset.
+ if(finiteNumber(e.webkitCompassHeading,360)!==null)return {heading:(raw+e.webkitCompassHeading+e.alpha+720)%360,absolute:true};
+ return {heading:raw,absolute:e.absolute===true};
+}
+window.addEventListener('deviceorientation',e=>{
+ phoneHeading=finiteNumber(e.webkitCompassHeading,360);phoneHeadingAccuracy=finiteNumber(e.webkitCompassAccuracy,360);
+ const h=cameraCompass(e);phoneCameraHeading=h.heading;phoneAbsolute=h.absolute;phoneHeadingAt=Date.now();phoneSend();
+});
+setInterval(()=>{
+ phoneSend();if(!phoneGeoEnabled||document.hidden||!navigator.geolocation)return;
+ const age=phoneLocation?Date.now()-phoneLocation.location_at:Infinity;
+ if(age>2500&&!phoneGpsPending){
+  phoneGpsPending=true;navigator.geolocation.getCurrentPosition(p=>{phoneGpsPending=false;phoneGpsSuccess(p)},e=>{phoneGpsPending=false;phoneGpsFailure(e)},{enableHighAccuracy:true,maximumAge:0,timeout:10000});
+ }
+ if(Date.now()-phoneGpsLastCallback>20000&&Date.now()-phoneGpsRestart>20000)phoneStartWatch();
+},4000);
+setInterval(phoneSend,700);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&phoneGeoEnabled){phoneClaim();phoneStartWatch()}});
+
+let visionSocket=null,visionState=null,visionMine=false,visionRetry=null,visionOffset=0;
+const visionStatus=document.getElementById('visionStatus'),visionImage=document.getElementById('visionImage');
+function visionConnect(){
+ if(document.hidden||visionSocket&&visionSocket.readyState<2)return;
+ const ws=new WebSocket('wss://'+location.host+CLOUD_BASE+'vision');visionSocket=ws;
+ ws.onopen=()=>{phoneSensorClaimed=false;phoneClaim()};
+ ws.onmessage=e=>{
+  const s=JSON.parse(e.data);if(s.type==='sensors_claimed'){phoneSensorClaimed=true;phoneSend();return}if(s.type==='vision_error'){visionStatus.textContent=s.error;navNote(s.error);return}if(s.type==='nav_saved'){if(['nav_set','nav_import'].includes(s.action)){navDirty=false;amapDestinationDirty=false;navSeenRevision=-1;if(s.action==='nav_import')amapResetPreview()}navNote(s.action==='nav_test_start'?'手持导航测试已开始，电机锁定':s.action==='nav_test_stop'?'手持测试已结束':s.action==='nav_calibrate'?'方向微调已完成':'导航路线已保存');return}if(s.type!=='vision_state')return;
+  navigationRender(s);
+  autoDiagnosticsRender(s);
+  hapticPush(s.haptics);
+  visionState=s;visionOffset=s.server_time-Date.now();visionMine=s.enabled&&s.controller===client;
+  visionStatus.textContent=(s.pc_online?(s.model_ready?'PC 模型就绪':'PC 正在加载模型'):'PC 未连接')+' · '+(s.enabled?(s.diagnostics?.paused||s.diagnostics?.crawling||s.diagnostics?.mode==='supervised'?s.reason:'自动驾驶中'):s.reason);
+  const fresh=s.result&&s.result_age_ms<1200;
+  document.getElementById('visionArm').disabled=(s.diagnostics?.explore_blockers?.length??1)>0||!online||s.enabled;
+  document.getElementById('visionObserve').textContent=fresh?(s.result.reason+' · 推理 '+s.result.inference_ms+' ms · 画面年龄 '+s.result_age_ms+' ms · 左/中/右 '+s.result.scores.map(x=>Math.round(x*100)+'%').join(' / ')):'等待新鲜的手机摄像头画面';
+  if(fresh)document.getElementById('visionObserve').textContent+=' · 近处 '+Math.round((s.result.near_ratio||0)*100)+'% · 通路门槛 '+Math.round((s.result.corridor_threshold||.88)*100)+'% · 恢复只需1帧';
+  visionImage.hidden=!fresh;if(fresh)visionImage.src='data:image/jpeg;base64,'+s.result.overlay;
+  const p=s.sensors;document.getElementById('phoneReadout').textContent=p?('手机数据：'+(p.latitude!=null?'经纬度 '+p.latitude.toFixed(6)+', '+p.longitude.toFixed(6)+' · 精度约 '+Math.round(p.accuracy)+' 米':'定位尚未授权')+(p.heading!=null?' · 朝向 '+Math.round(p.heading)+'°':'')+(p.motion?' · 运动数据已收到':'')):'尚未收到手机定位/运动数据';
+ };
+ ws.onclose=()=>{visionSocket=null;visionMine=false;visionStatus.textContent='视觉控制连接中断';document.getElementById('visionArm').disabled=true;document.getElementById('autoTestReady').textContent='连接中断，已失去驾驶控制；等待重新连接';document.getElementById('autoCommand').textContent='实际下发：连接中断，以下历史状态不可视为当前状态';document.getElementById('autoFeedback').textContent='ESP 反馈：连接中断，无法读取最新状态';visionImage.hidden=true;if(!document.hidden)visionRetry=setTimeout(visionConnect,1500)};
+ ws.onerror=()=>{};
+}
+function visionDisable(){visionMine=false;if(visionSocket?.readyState===WebSocket.OPEN)visionSocket.send(JSON.stringify({type:'stop'}))}
+document.getElementById('visionArm').onclick=async()=>{
+ clearInput();gamepadReady=false;
+ await stop();
+ if(visionSocket?.readyState!==WebSocket.OPEN)return;
+ visionSocket.send(JSON.stringify({type:'arm',mode:'explore',client,speed:Number(document.getElementById('visionSpeed').value),invert_a:document.getElementById('invertA').checked,invert_b:document.getElementById('invertB').checked}));
+};
+document.getElementById('visionStop').onclick=()=>{visionDisable();stop()};
+document.getElementById('visionSpeed').oninput=e=>{document.getElementById('visionSpeedValue').textContent=e.target.value+'%';visionDisable()};
+setInterval(()=>{if(visionMine&&!document.hidden&&visionSocket?.readyState===WebSocket.OPEN)visionSocket.send(JSON.stringify({type:'lease',client}))},350);
+document.addEventListener('visibilitychange',()=>{if(document.hidden){visionMine=false;if(visionSocket)visionSocket.close()}else visionConnect()});
+window.addEventListener('pagehide',()=>{visionMine=false;if(visionSocket)visionSocket.close()});
+visionConnect();
+
+let boldHeld=false,boldEpoch=0,boldTimer=null,boldLimit=null;
+function boldRelease(){
+ const was=boldHeld;boldHeld=false;boldEpoch++;clearInterval(boldTimer);clearTimeout(boldLimit);
+ if(visionSocket?.readyState===WebSocket.OPEN)visionSocket.send(JSON.stringify({type:'blind_release'}));
+ if(was)document.getElementById('boldState').textContent='大胆测试已停止；重新按住可开始下一轮';
+}
+function boldSend(){
+ if(!boldHeld||document.hidden||visionSocket?.readyState!==WebSocket.OPEN){boldRelease();return}
+ visionSocket.send(JSON.stringify({type:'blind_hold',client,invert_a:document.getElementById('invertA').checked,invert_b:document.getElementById('invertB').checked}));
+}
+async function boldStart(e){
+ e.preventDefault();if(boldHeld||document.hidden||!online)return;
+ boldHeld=true;const epoch=++boldEpoch;
+ if(e.pointerId!==undefined)e.currentTarget.setPointerCapture(e.pointerId);
+ await stop();if(!boldHeld||epoch!==boldEpoch)return;
+ if(!online||visionSocket?.readyState!==WebSocket.OPEN){boldRelease();return}
+ document.getElementById('boldState').textContent='按住监督中：忽略视觉，以80%功率倒行；松手即停，最多8秒';
+ boldSend();boldTimer=setInterval(boldSend,120);boldLimit=setTimeout(boldRelease,8000);
+}
+const boldButton=document.getElementById('boldTest');
+boldButton.addEventListener('pointerdown',boldStart);
+for(const event of ['pointerup','pointercancel','lostpointercapture'])boldButton.addEventListener(event,boldRelease);
+boldButton.addEventListener('keydown',e=>{if((e.key===' '||e.key==='Enter')&&!e.repeat)boldStart(e)});
+boldButton.addEventListener('keyup',e=>{if(e.key===' '||e.key==='Enter')boldRelease()});
+window.addEventListener('blur',boldRelease);window.addEventListener('pagehide',boldRelease);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)boldRelease()});
+document.getElementById('visionStop').addEventListener('click',boldRelease);
+document.getElementById('emergency').addEventListener('click',boldRelease);
+
+let navMap=null,navTiles=null,navPosition=null,navAccuracy=null,navLine=null,navMarkers=null,navCentered=false,navDraftPoints=[],navDirty=false,navSeenRevision=-1,navLastSensors=null;
+let amapDestination=null,amapDestinationMarker=null,amapPreview=null,amapPreviewLine=null,navSavedPath=null,navReferenceMarker=null,amapDestinationDirty=false;
+let placeSearchEpoch=0,placeSelectedId=null;
+let navHandMine=false,navCarBlockers=[],navCarStarting=false;
+try{
+ if(typeof L!=='undefined'){
+  navMap=L.map('navMap',{maxZoom:20}).setView([0,0],2);navMarkers=L.layerGroup().addTo(navMap);navLine=L.polyline([],{color:'#1763ce',weight:4,dashArray:'7 6'}).addTo(navMap);L.control.scale({imperial:false}).addTo(navMap);
+  navMap.on('click',e=>navPick({lat:e.latlng.lat,lng:e.latlng.lng}));
+ }
+}catch(e){document.getElementById('navMapHint').textContent='地图初始化失败，可直接输入经纬度';}
+function navNote(text){document.getElementById('navDraft').textContent=text}
+function navSend(data){if(visionSocket?.readyState!==WebSocket.OPEN){navNote('服务器未连接');return}visionSocket.send(JSON.stringify(data))}
+function navDraw(){
+ const list=document.getElementById('navPoints');list.replaceChildren();if(navMarkers)navMarkers.clearLayers();
+ navDraftPoints.forEach((p,i)=>{const li=document.createElement('li');li.textContent=(i===navDraftPoints.length-1?'终点':'途经点')+' '+p.lat.toFixed(6)+', '+p.lng.toFixed(6);list.append(li);if(navMarkers)L.circleMarker([p.lat,p.lng],{radius:7,color:i===navDraftPoints.length-1?'#c52828':'#1763ce'}).bindTooltip(String(i+1),{permanent:true,direction:'top'}).addTo(navMarkers)});
+ const pos=navLastSensors?.latitude!=null?[[navLastSensors.latitude,navLastSensors.longitude]]:[];if(navLine)navLine.setLatLngs(!navDirty&&navSavedPath?navSavedPath.map(p=>[p.lat,p.lng]):[...pos,...navDraftPoints.map(p=>[p.lat,p.lng])]);
+ navNote(navDirty?'草稿未保存；保存后才能用于导航。':navDraftPoints.length?'路线已保存，可校准车头方向。':'请先添加航点并保存。');
+}
+function navigationRender(s){
+ const cfg=s.navigation;if(!cfg)return;
+ document.getElementById('navGpsMode').value=cfg.gps_test===true?'test':'strict';
+ if(cfg.revision!==navSeenRevision){navSeenRevision=cfg.revision;if(!navDirty){navDraftPoints=cfg.points.map(p=>({...p}));navSavedPath=cfg.path||null;document.getElementById('navRadius').value=cfg.radius;navDraw();
+  if(navReferenceMarker){navReferenceMarker.remove();navReferenceMarker=null}
+  const commands=document.getElementById('navCommands');commands.replaceChildren();for(const c of cfg.commands||[]){const li=document.createElement('li');li.textContent=c.text+' · 方位 '+Math.round(c.bearing_deg)+'°';commands.append(li)}
+  if(cfg.meta)amapShowMeta(cfg.meta,'已载入高德路线');
+ }}
+ const p=s.sensors;navLastSensors=p;
+ const headingAccuracy=p?.heading_accuracy;
+ const headingAccuracyKnown=Number.isFinite(headingAccuracy)&&headingAccuracy>=0;
+ document.getElementById('navHeadingStats').textContent='手机朝向精度（罗盘）：'+(headingAccuracyKnown?'约 ±'+headingAccuracy.toFixed(1)+'°'+(headingAccuracy<=25?' · 良好':' · 偏低'):'浏览器未提供有效精度')+(cfg.gps_test===true?' · 测试模式：精度不足仍可导航':' · 严格模式：要求误差≤25°')+'。陀螺仪精度未由浏览器提供。';
+ if(p&&Number.isFinite(p.latitude)&&Number.isFinite(p.longitude)&&navMap){
+  const xy=[p.latitude,p.longitude];
+  if(!navPosition){navPosition=L.circleMarker(xy,{radius:7,color:'#116d36',fillOpacity:1}).addTo(navMap);navAccuracy=L.circle(xy,{radius:Math.max(1,p.accuracy||1),weight:1,color:'#116d36',fillOpacity:.08}).addTo(navMap)}else{navPosition.setLatLng(xy);navAccuracy.setLatLng(xy).setRadius(Math.max(1,p.accuracy||1))}
+  if(!navCentered){navMap.setView(xy,18);navCentered=true}if(navLine)navLine.setLatLngs(!navDirty&&navSavedPath?navSavedPath.map(p=>[p.lat,p.lng]):[xy,...navDraftPoints.map(q=>[q.lat,q.lng])]);
+ }
+ const n=cfg.status;
+ document.getElementById('navStatus').textContent=n?n.reason:'等待手机新鲜定位和 PC 导航计算';
+ document.getElementById('navProgress').textContent=n&&n.total?(n.arrived?'路线已完成':'航点 '+Math.min(n.index+1,n.total)+' / '+n.total):'已保存 '+cfg.points.length+' 点';
+ document.getElementById('navMetrics').textContent=n?((n.remaining_m!=null?'沿路线剩余 '+n.remaining_m+' 米':n.distance_m!=null?'距当前航点 '+n.distance_m+' 米':'')+(n.cross_track_m!=null?' · 离路线 '+n.cross_track_m+' 米':'')+(n.bearing!=null?' · 目标方位 '+n.bearing+'°':'')+(n.heading_error!=null?' · 航向偏差 '+n.heading_error+'°':'')+(n.accuracy_m!=null?' · 定位误差约 '+n.accuracy_m+' 米':'')+' · '+(n.heading_source==='phone_absolute'?'手机自动朝向':cfg.calibration?'方向微调已生效':'等待手机朝向')):'';
+ navCarBlockers=[];
+ if(navDirty||amapDestinationDirty)navCarBlockers.push('请先规划并载入所选路线');
+ if(!cfg.points.length)navCarBlockers.push('请先选择目的地并规划路线');
+ if(cfg.blocked)navCarBlockers.push(...(cfg.meta?.warnings||['路线含需人工处理的路段']));
+ if(!online)navCarBlockers.push('车辆离线');
+ if(!s.pc_online||!s.model_ready)navCarBlockers.push('PC 导航计算尚未就绪');
+ if(!s.camera_online||!s.result||s.result_age_ms>900)navCarBlockers.push('请在车上手机开启摄像头');
+ else if(!s.result.clear)navCarBlockers.push(s.result.reason||'前方通路尚未确认');
+ if(cfg.points.length&&!n?.ready)navCarBlockers.push(n?.reason||'等待手机定位与朝向');
+ const carRunning=s.enabled&&s.diagnostics?.mode==='navigate';
+ document.getElementById('navStart').disabled=carRunning||navCarStarting;
+ document.getElementById('navStart').textContent=carRunning?'小车导航自动驾驶中':navCarStarting?'正在启动小车导航…':'开启小车导航自动驾驶';
+ document.getElementById('navCarState').textContent=carRunning?'小车正在按路线自动驾驶。':navCarBlockers.length?'暂不能启动：'+[...new Set(navCarBlockers)].join('；'):cfg.handheld?'点击绿色按钮将结束手持测试，并启动小车导航自动驾驶。':'小车导航已就绪，点击绿色按钮开始。';
+ navHandMine=cfg.handheld&&cfg.handheld_client===client;
+ document.getElementById('navHandStart').disabled=navDirty||amapDestinationDirty||!cfg.points.length||!s.pc_online||cfg.handheld;
+ document.getElementById('navHandState').textContent=cfg.handheld?'手持手机测试中 · 电机已锁定，仅显示导航指令':'未进行手持测试；开启后不会驱动电机。';
+ const commandLabels={forward:'沿路线前进',left:'向左前方行进',right:'向右前方行进',turn_left:'向左转，对齐路线',turn_right:'向右转，对齐路线'};
+ document.getElementById('navLiveCommand').textContent='导航指令：'+(n?.arrived?'已到达':n?.ready?(commandLabels[n.command]||'沿路线行进')+(n.route_command?' · 本段剩余 '+n.route_command.remaining_m+' 米':''):n?.reason||'等待路线与手机数据');
+ document.getElementById('navGpsStats').textContent=p?'定位诊断：收到 '+(p.gps_callbacks??'—')+' 次回调 / '+(p.gps_fixes??'—')+' 次新定位 · 最近位置 '+(Number.isFinite(p.location_at)?Math.max(0,(s.server_time-p.location_at)/1000).toFixed(1)+' 秒前':'无')+' · 误差约 '+Math.round(p.accuracy||0)+' 米'+(p.gps_error?' · '+p.gps_error:''):'定位诊断：未收到手机数据；请点击“允许本机定位与运动数据”';
+}
+function navLoadTiles(){if(!navMap)return navNote('底图库未就绪，可输入坐标');if(navTiles){navTiles.redraw();return}navTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,referrerPolicy:'origin',attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'}).addTo(navMap);navTiles.on('tileerror',()=>document.getElementById('navMapHint').textContent='地图底图加载失败；仍可输入 WGS84 坐标设置航点。')}
+document.getElementById('navTiles').onclick=navLoadTiles;
+document.getElementById('navCenter').onclick=()=>{if(navMap&&navLastSensors?.latitude!=null)navMap.setView([navLastSensors.latitude,navLastSensors.longitude],18);else navNote('尚未收到小车位置，请在车上的手机开启相机并允许定位')};
+document.getElementById('navAdd').onclick=()=>{const la=document.getElementById('navLat'),lo=document.getElementById('navLng');if(!la.value||!lo.value)return navNote('请填写经纬度');const lat=Number(la.value),lng=Number(lo.value);if(!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>85||Math.abs(lng)>180)return navNote('经纬度超出范围');navPick({lat,lng});if(navMap)navMap.panTo([lat,lng])};
+document.getElementById('navUndo').onclick=()=>{navDraftPoints.pop();navDirty=true;navDraw()};
+document.getElementById('navClear').onclick=()=>{navDraftPoints=[];navDirty=true;navDraw()};
+document.getElementById('navRadius').onchange=()=>{navDirty=true;amapResetPreview();navDraw()};
+document.getElementById('navSave').onclick=()=>{navSend({type:'nav_set',points:navDraftPoints,radius:Number(document.getElementById('navRadius').value)});navNote('正在保存路线…')};
+document.getElementById('navCalibrate').onclick=()=>{if(navDirty)return navNote('请先保存路线');navSend({type:'nav_calibrate'})};
+document.getElementById('navStart').onclick=async()=>{
+ if(navCarStarting)return;
+ if(navCarBlockers.length){const text='无法开始小车导航：'+[...new Set(navCarBlockers)].join('；');document.getElementById('navCarState').textContent=text;navNote(text);return}
+ navCarStarting=true;document.getElementById('navStart').disabled=true;
+ try{
+  clearInput();gamepadReady=false;navHandMine=false;
+  const switching=visionState?.navigation?.handheld===true;await stop();
+  if(switching){
+   const end=Date.now()+4000;let ready=false;
+   while(Date.now()<end){
+    const s=visionState,n=s?.navigation;
+    if(!n?.handheld&&n?.status?.ready&&s.result?.nav_drive?.clear&&s.result.nav_drive.revision===n.revision&&s.result_age_ms<900){ready=true;break}
+    await new Promise(r=>setTimeout(r,100));
+   }
+   if(!ready)throw Error(visionState?.navigation?.status?.reason||'等待车辆导航条件就绪，请稍后重试');
+  }
+  if(!online)throw Error('车辆离线，请检查供电和网络');
+  navSend({type:'arm',mode:'navigate',client,speed:Number(document.getElementById('visionSpeed').value),invert_a:document.getElementById('invertA').checked,invert_b:document.getElementById('invertB').checked});
+ }catch(e){document.getElementById('navCarState').textContent='启动失败：'+e.message;navNote(e.message)}
+ finally{navCarStarting=false;document.getElementById('navStart').disabled=false}
+};
+document.getElementById('navStop').onclick=()=>{visionDisable();stop()};
+document.getElementById('navGpsMode').onchange=e=>{navSend({type:'nav_gps_mode',test:e.target.value==='test'});navNote('正在切换定位要求，完成后重新开始导航。')};
+document.getElementById('navHandStart').onclick=async()=>{const permission=requestPhoneSensors();await stop();await permission;navSend({type:'nav_test_start',client})};
+document.getElementById('navHandStop').onclick=()=>{navHandMine=false;navSend({type:'nav_test_stop'})};
+setInterval(()=>{if(navHandMine&&!document.hidden)navSend({type:'nav_test_lease'})},500);
+navLoadTiles();
+function amapResetPreview(){amapPreview=null;document.getElementById('amapImport').disabled=true;if(amapPreviewLine){amapPreviewLine.remove();amapPreviewLine=null}}
+function navPick(p,place=null){
+ if(document.getElementById('navClickMode').value==='destination'){
+  placeSelectedId=place?.id||null;const selected=document.getElementById('placeSelected');selected.hidden=false;selected.textContent=place?'已选终点：'+place.name+' · '+[place.city,place.district,place.address].filter(Boolean).join(' ')+(place.uses_entrance?'（使用地点入口）':''):'已选地图终点：'+p.lat.toFixed(6)+', '+p.lng.toFixed(6);
+  for(const button of document.querySelectorAll('#placeResults button'))button.setAttribute('aria-pressed',String(!!place&&button.dataset.placeId===place.id));
+  amapDestination=p;amapDestinationDirty=true;document.getElementById('navStart').disabled=true;amapResetPreview();
+  if(amapDestinationMarker)amapDestinationMarker.remove();if(navMap)amapDestinationMarker=L.circleMarker([p.lat,p.lng],{color:'#c52828',radius:9}).bindTooltip('规划终点',{permanent:true,direction:'top'}).addTo(navMap);
+  document.getElementById('amapState').textContent='终点已选择：'+p.lat.toFixed(6)+', '+p.lng.toFixed(6)+'；点击高德自动规划。';
+ }else{if(navDraftPoints.length>=20)return navNote('最多20个航点');navDraftPoints.push(p);navDirty=true;navDraw()}
+}
+function amapShowMeta(meta,prefix){
+ document.getElementById('amapState').textContent=prefix+' · '+meta.distance_m+' 米'+(meta.duration_s?' · 高德估计步行 '+Math.ceil(meta.duration_s/60)+' 分钟（非小车耗时）':'')+' · 起点距道路 '+meta.start_gap_m+' 米 · 终点距道路 '+meta.end_gap_m+' 米'+(meta.warnings?.length?' · '+meta.warnings.join('；'):'');
+ const list=document.getElementById('amapInstructions');list.replaceChildren();for(const step of meta.instructions||[]){const li=document.createElement('li');li.textContent=step.text||('行进 '+step.distance+' 米');list.append(li)}document.getElementById('amapDetails').hidden=false;
+}
+document.getElementById('amapPlan').onclick=async()=>{
+ if(!amapDestination){document.getElementById('amapState').textContent='请先点击地图选择终点，或输入经纬度设定终点。';return}
+ const button=document.getElementById('amapPlan');button.disabled=true;amapResetPreview();document.getElementById('amapState').textContent='正在根据小车位置规划高德步行路线…';
+ const destination={...amapDestination};
+ try{
+  const p=await request(CLOUD_BASE+'api/navigation/plan',{destination,radius:Number(document.getElementById('navRadius').value)},11000);
+  if(destination.lat!==amapDestination.lat||destination.lng!==amapDestination.lng)return;
+  amapPreview=p;amapShowMeta(p.route.meta,p.route.blocked?'路线已生成，车辆执行需人工处理限制路段；可手持测试':'路线已生成并正在自动载入，可开始驾驶或手持测试');
+  if(navMap){amapPreviewLine=L.polyline(p.route.path.map(q=>[q.lat,q.lng]),{color:p.route.blocked?'#c52828':'#d87800',weight:5}).addTo(navMap);navMap.fitBounds(amapPreviewLine.getBounds(),{padding:[24,24],maxZoom:19})}
+  document.getElementById('amapImport').disabled=false;
+  navSend({type:'nav_import',plan_id:p.plan_id});
+ }catch(e){document.getElementById('amapState').textContent='规划失败：'+e.message}finally{button.disabled=false}
+};
+document.getElementById('amapImport').onclick=()=>{if(amapPreview)navSend({type:'nav_import',plan_id:amapPreview.plan_id})};
+document.getElementById('navClickMode').onchange=e=>{document.getElementById('navAdd').textContent=e.target.value==='destination'?'设为规划终点':'添加手动航点'};
+document.getElementById('navAdd').textContent='设为规划终点';
+document.getElementById('placeSearchForm').onsubmit=async e=>{
+ e.preventDefault();const keyword=document.getElementById('placeKeyword').value.trim(),city=document.getElementById('placeCity').value.trim();
+ const status=document.getElementById('placeState'),list=document.getElementById('placeResults'),button=document.getElementById('placeSearch');
+ if(!keyword){status.textContent='请输入要搜索的地名。';return}
+ const epoch=++placeSearchEpoch;button.disabled=true;list.replaceChildren();status.textContent='正在搜索地点…';
+ try{
+  const data=await request(CLOUD_BASE+'api/navigation/search',{keyword,city},11000);if(epoch!==placeSearchEpoch)return;
+  status.textContent=data.items.length?'找到 '+data.items.length+' 个地点'+(data.city?' · 优先城市：'+data.city:' · 可填写城市缩小范围')+'。请选择终点。':'未找到地点，请补充城市、完整名称或换一个关键词。';
+  for(const place of data.items){
+   const result=document.createElement('button');result.type='button';result.dataset.placeId=place.id;result.setAttribute('aria-pressed',String(placeSelectedId===place.id));result.style.cssText='text-align:left;width:100%;padding:12px 14px;background:#edf3fc;border:1px solid #d9e4f2';
+   const name=document.createElement('strong');name.textContent=place.name;const address=document.createElement('span');address.className='sub';address.style.display='block';address.textContent=[place.city,place.district,place.address].filter(Boolean).join(' ')||'地址未提供';
+   result.append(name,address);
+   if(place.distance_m!=null){const distance=document.createElement('span');distance.className='sub';distance.style.display='block';distance.textContent='距小车直线约 '+(place.distance_m>=1000?(place.distance_m/1000).toFixed(1)+' 公里':place.distance_m+' 米')+(place.distance_m>2000?' · 超出当前2公里导航范围':'');result.append(distance)}
+   result.onclick=()=>{document.getElementById('navClickMode').value='destination';document.getElementById('navAdd').textContent='设为规划终点';navPick(place.point,place);if(navMap)navMap.setView([place.point.lat,place.point.lng],18);status.textContent='已选择“'+place.name+'”，点击“高德自动规划步行路线”。';document.getElementById('navMap').scrollIntoView?.({behavior:'smooth',block:'start'})};
+   list.append(result);
+  }
+ }catch(err){if(epoch===placeSearchEpoch)status.textContent='搜索失败：'+err.message}
+ finally{if(epoch===placeSearchEpoch)button.disabled=false}
+};
+
+updateButtons();refresh();setInterval(sendDrive,200);setInterval(refresh,900);
+document.getElementById('wideEmergency').onclick=()=>document.getElementById('emergency').click();
+if(typeof ResizeObserver!=='undefined'&&navMap)new ResizeObserver(()=>navMap.invalidateSize()).observe(document.getElementById('navMap'));
+</script></html>

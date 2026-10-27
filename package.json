@@ -1,0 +1,13 @@
+{
+  "name": "iphone-car",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ESP32 car controller and PC vision reference for native iPhone development",
+  "scripts": {
+    "server": "node src/server/server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0",
+    "coordtransform": "2.1.2"
+  }
+}
